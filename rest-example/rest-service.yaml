@@ -267,7 +267,7 @@ spec:
             value: 3.20.1
           - key: api.title
             value: User API
-        component: undertow
+        component: platform-http
         scheme: http
         host: '{{karavan-service.hostname}}'
         port: '{{karavan-service.port}}'
