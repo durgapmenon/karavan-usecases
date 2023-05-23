@@ -1,0 +1,278 @@
+apiVersion: camel.apache.org/v1
+kind: Integration
+metadata:
+  name: rest-service
+spec:
+  flows:
+    - rest:
+        id: rest-231a
+        delete:
+          - id: delete-272c
+            param:
+              - name: id
+                type: path
+                dataType: integer
+            path: /users/{id}
+            to: direct:deleteUser
+            consumes: application/json
+            produces: application/json
+            description: Deletes a user by its ID
+            bindingMode: 'off'
+        get:
+          - id: get-06b9
+            param:
+              - name: id
+                type: path
+                dataType: integer
+            path: /users/{id}
+            consumes: application/json
+            produces: application/json
+            to: direct:getUserById
+            description: Fetches a user by its ID
+            bindingMode: 'off'
+          - id: get-466e
+            path: /users
+            to: direct:getAllUsers
+            consumes: application/json
+            produces: application/json
+            description: Fetches all users
+            bindingMode: 'off'
+        patch:
+          - id: patch-847d
+            param:
+              - name: id
+                type: query
+                dataType: integer
+              - name: name
+                type: header
+                dataType: string
+            path: /users
+            consumes: application/json
+            produces: application/json
+            to: direct:patchUserById
+            description: Updates a user based on the params provided
+            bindingMode: 'off'
+        post:
+          - id: post-9aa7
+            path: /users
+            consumes: application/json
+            produces: application/json
+            to: direct:createUser
+            description: Create a new user
+            bindingMode: 'off'
+        put:
+          - id: put-c1ad
+            param:
+              - name: id
+                type: path
+            path: /users/{id}
+            consumes: application/json
+            produces: application/json
+            to: direct:updateUserById
+            description: Updates a user by its ID
+            bindingMode: 'off'
+        path: /use-case-2
+        consumes: application/json
+        produces: application/json
+        description: >-
+          REST Service supporting CRUD operations for a table 'USERS' on MySQL
+          DB
+        bindingMode: 'off'
+    - route:
+        id: Delete User By ID
+        from:
+          uri: direct:deleteUser
+          id: from-62be
+          steps:
+            - bean:
+                id: bean-b6ae
+                ref: userBean
+                method: findUserById
+            - marshal:
+                id: marshal-d34a
+                json:
+                  id: json-9567
+                  library: gson
+            - to:
+                uri: kamelet:mysql-sink
+                id: to-a7cb
+                parameters:
+                  serverName: '{{database.server.hostname}}'
+                  serverPort: '{{database.server.port}}'
+                  username: '{{database.server.username}}'
+                  password: '{{database.server.password}}'
+                  query: DELETE FROM USERS WHERE USER_ID = :#id;
+                  databaseName: '{{database.server.instance}}'
+            - marshal:
+                id: marshal-2bb3
+                json:
+                  id: json-a2b9
+                  library: gson
+    - route:
+        id: Create New User
+        from:
+          uri: direct:createUser
+          id: from-f05d
+          steps:
+            - log:
+                message: ${body}
+                id: log-22d3
+            - to:
+                uri: kamelet:mysql-sink
+                id: to-17ea
+                parameters:
+                  serverName: '{{database.server.hostname}}'
+                  serverPort: '{{database.server.port}}'
+                  username: '{{database.server.username}}'
+                  password: '{{database.server.password}}'
+                  query: >-
+                    INSERT INTO USERS (USER_ID, USER_NAME) VALUES (:#id,
+                    :#name);
+                  databaseName: '{{database.server.instance}}'
+            - marshal:
+                id: marshal-f14d
+                json:
+                  id: json-8011
+                  library: gson
+            - bean:
+                id: bean-05f6
+                ref: userBean
+                method: returnResponseForCreate
+    - route:
+        id: Fetch User By ID
+        from:
+          uri: direct:getUserById
+          id: from-b4f7
+          steps:
+            - bean:
+                id: bean-41cc
+                ref: userBean
+                method: findUserById
+            - marshal:
+                id: marshal-06bf
+                json:
+                  id: json-48a5
+                  library: gson
+            - to:
+                uri: kamelet:mysql-sink
+                id: to-86f3
+                parameters:
+                  serverName: '{{database.server.hostname}}'
+                  serverPort: '{{database.server.port}}'
+                  username: '{{database.server.username}}'
+                  password: '{{database.server.password}}'
+                  query: SELECT * FROM USERS WHERE USER_ID = :#id;
+                  databaseName: '{{database.server.instance}}'
+            - marshal:
+                id: marshal-c96d
+                json:
+                  id: json-1cc3
+                  library: gson
+    - route:
+        id: Get All Users
+        from:
+          uri: direct:getAllUsers
+          id: from-c50e
+          steps:
+            - bean:
+                id: bean-e52f
+                ref: userBean
+                method: getAllUsers
+            - marshal:
+                id: marshal-1a8a
+                json:
+                  id: json-860a
+                  library: gson
+            - to:
+                uri: kamelet:mysql-sink
+                id: to-0fbd
+                parameters:
+                  serverName: '{{database.server.hostname}}'
+                  serverPort: '{{database.server.port}}'
+                  username: '{{database.server.username}}'
+                  password: '{{database.server.password}}'
+                  query: SELECT * FROM USERS ORDER BY USER_ID;
+                  databaseName: '{{database.server.instance}}'
+            - marshal:
+                id: marshal-ac80
+                json:
+                  id: json-f6a8
+                  library: gson
+    - route:
+        id: Update User By ID
+        from:
+          uri: direct:updateUserById
+          id: from-fc1f
+          steps:
+            - bean:
+                id: bean-dda7
+                ref: userBean
+                method: updateUserById
+            - marshal:
+                id: marshal-7a52
+                json:
+                  id: json-3fae
+                  library: gson
+            - to:
+                uri: kamelet:mysql-sink
+                id: to-2351
+                parameters:
+                  serverName: '{{database.server.hostname}}'
+                  serverPort: '{{database.server.port}}'
+                  username: '{{database.server.username}}'
+                  password: '{{database.server.password}}'
+                  query: UPDATE USERS SET USER_NAME = :#name WHERE USER_ID = :#id
+                  databaseName: '{{database.server.instance}}'
+            - marshal:
+                id: marshal-13e0
+                json:
+                  id: json-8317
+                  library: gson
+    - route:
+        id: 'Patch User '
+        from:
+          uri: direct:patchUserById
+          id: from-9f91
+          steps:
+            - bean:
+                id: bean-b7f9
+                ref: userBean
+                method: patchUserById
+            - marshal:
+                id: marshal-7014
+                json:
+                  id: json-6503
+                  library: gson
+            - to:
+                uri: kamelet:mysql-sink
+                id: to-1f1c
+                parameters:
+                  serverName: '{{database.server.hostname}}'
+                  serverPort: '{{database.server.port}}'
+                  username: '{{database.server.username}}'
+                  password: '{{database.server.password}}'
+                  query: UPDATE USERS SET USER_NAME = :#name WHERE USER_ID = :#id;
+                  databaseName: '{{database.server.instance}}'
+            - marshal:
+                id: marshal-f4a9
+                json:
+                  id: json-1145
+                  library: gson
+    - restConfiguration:
+        dataFormatProperty:
+          - key: prettyPrint
+            value: 'true'
+        apiProperty:
+          - key: api.version
+            value: 3.20.1
+          - key: api.title
+            value: User API
+        component: undertow
+        scheme: http
+        host: '{{karavan-service.hostname}}'
+        port: '{{karavan-service.port}}'
+        contextPath: /karavan-service
+        apiContextPath: /api-doc
+        bindingMode: 'off'
+        enableCors: true
+        apiComponent: openapi
